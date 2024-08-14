@@ -9,7 +9,7 @@
 #Total control 45082
 
 # Used Panel
-# Cell signaling : https://www.cellsignal.com/learn-and-support/reference-tables/histone-modification-table#acetylation
+# wiki Pathway: https://www.wikipathways.org/pathways/WP2369.html
 # Goterms: Searched for Histone and modifier Term 
 # OMIM : searchd only for Histone Term
 # Reaktom: https://reactome.org/download-data Reaktom Pathway gene set 
@@ -283,70 +283,318 @@ write.csv2(gene_of_intrest_FDR, file ="significant_gene_tables/significant_histo
 
 
 
-####################  try to make qq plot work 
+####################  QQ-Plot generation 
 
-# entweder neues column machen wo nur die ersten x rows einen namen haben 
-# oder ich mache eine loop zum beschreiben der punkte die x mal läft von oben runter 
+# separate for the situations for aCHD 
+aCHD_LOF<-sum_table_CHD[grepl("hcLOF / all_cases / Case_Control",sum_table_CHD$Situation),]
+aCHD_syn<-sum_table_CHD[grepl("syn / all_cases / Case_Control",sum_table_CHD$Situation),]
+aCHD_missC<- sum_table_CHD[grepl("missC / all_cases / Case_Control",sum_table_CHD$Situation),]
 
-# test first only on 
-hist_aCHD_LOF<-Hist_sum_table_CHD[grepl("hcLOF / all_cases / Case_Control",Hist_sum_table_CHD$Situation),]
-hist_aCHD_syn<-Hist_sum_table_CHD[grepl("syn / all_cases / Case_Control",Hist_sum_table_CHD$Situation),]
+# separate for the situations for sCHD 
+sCHD_LOF<-sum_table_CHD[grepl("hcLOF / syndromic / Case_Control",sum_table_CHD$Situation),]
+sCHD_syn<-sum_table_CHD[grepl("syn / syndromic / Case_Control",sum_table_CHD$Situation),]
+sCHD_missC <-sum_table_CHD[grepl("missC / syndromic / Case_Control",sum_table_CHD$Situation),]
 
-
-
-#YEAH !!!!!!!    labeling the points works know correctly 
-# create qq Plot with fastqq
-fastqq (hist_aCHD_LOF$fet.p_value,
-        main="Title",
-        p2=NULL,
-        logtransform=TRUE,
-        speedup=TRUE,
-        lambda=TRUE,
-        maxP=NULL, # truncation of p values visible if nedd be 
-        cex=1,   # punkt größe
-        cex.axis=1# achsen beschriftungs größe
-)
-#calculate observed pvalue / to get the xy coordinates   
-hist_aCHD_LOF$obs.p<- -log10(hist_aCHD_LOF$fet.p_value)
-#calculate expected p-value
-hist_aCHD_LOF$exp.p<- -log10((rank(hist_aCHD_LOF$fet.p_value, ties.method="first")-.5)/(length(hist_aCHD_LOF$fet.p_value)-1))
-#add the gene Symbol via coordinates but only for teh first two / defined in head()
-text(head(hist_aCHD_LOF$exp.p,n=2),head(hist_aCHD_LOF$obs.p,n=2),labels=head(hist_aCHD_LOF$SYMBOL,n=2), cex= 0.7, pos=3)
-
-
-
-#text(hist_aCHD_LOF$exp.p,hist_aCHD_LOF$obs.p,labels=hist_aCHD_LOF$SYMBOL, cex= 0.7, pos=3)
+# separate for the situations for nsCHD 
+nsCHD_LOF<-sum_table_CHD[grepl("hcLOF / nonsyndromic / Case_Control",sum_table_CHD$Situation),]
+nsCHD_syn<-sum_table_CHD[grepl("syn / nonsyndromic / Case_Control",sum_table_CHD$Situation),]
+nsCHD_missC <-sum_table_CHD[grepl("missC / nonsyndromic / Case_Control",sum_table_CHD$Situation),]
 
 
 
 
 
 ##############    Function test ---> Funktioniert 
+# the following function is a alternative version from me to optimize xachsis for labeling gene points 
+fastqqx<-function (p1, p2 = NULL, colour, logtransform = TRUE, pairwisecompare = TRUE, 
+          speedup = TRUE, lambda = TRUE, maxP = 14, fix_zero = TRUE, 
+          cex = 0.6, cex.axis = 0.9, xlab, ylab, ...)
+  {
+  if (!is.numeric(p1)) {
+    stop("p1 must be numeric.")
+  }
+  if (missing(colour)) {
+    colour = "black"
+  }
+  f = !is.na(p1) & !is.na(p1) & !is.nan(p1) & !is.na(p1) & 
+    !is.null(p1) & is.finite(p1)
+  p1 = p1[f]
+  if (logtransform) {
+    if (any(p1 < 0)) {
+      warning("negative p-values found in p1. will be truncated to 0 first and then converted to minimum p-value/2.")
+    }
+    if (any(p1 == 0)) {
+      warning("some p-values in p1 equal to zero. check fix_zero behavior.")
+    }
+    if (any(p1 > 1)) {
+      warning("some p-values > 1 in p1. will be truncated to 1.")
+    }
+    f = p1 < 0
+    p1[f] = 0
+    f = p1 > 1
+    p1[f] = 1
+    f = (p1 == 0)
+    if (any(f)) {
+      if (fix_zero) {
+        mx = min(p1[!f])
+        p1[f] = mx
+      }
+      else {
+        p1 = p1[!f]
+      }
+    }
+  }
+  lmb = qchisq(median(p1), 1, lower.tail = F)/0.4549364
+  if (length(p2) > 1) {
+    if (length(p2) != length(p1)) {
+      stop("p1 and p2 must have same length.")
+    }
+    else {
+      if (!is.numeric(p2)) {
+        stop("p2 must be numeric.")
+      }
+      f = !is.na(p2) & !is.na(p2) & !is.nan(p2) & !is.na(p2) & 
+        !is.null(p2) & is.finite(p2)
+      p2 = p2[f]
+      if (logtransform) {
+        if (any(p2 < 0)) {
+          warning("negative p-values found in p1. will be truncated to 0 first and then converted to minimum p-value/2.")
+        }
+        if (any(p2 == 0)) {
+          warning("some p-values in p2 equal to zero. check fix_zero behavior.")
+        }
+        if (any(p2 > 1)) {
+          warning("some p-values > 1 in p1. will be truncated to 1.")
+        }
+        f = (p2 < 0)
+        p2[f] = 0
+        f = (p2 > 1)
+        p2[f] = 1
+        f = (p2 == 0)
+        if (any(f)) {
+          if (fix_zero) {
+            mx = min(p2[!f])
+            p2[f] = mx
+          }
+          else {
+            p2 = p2[!f]
+          }
+        }
+      }
+      lmb = qchisq(median(p1), 1, lower.tail = F)/qchisq(median(p2), 
+                                                         1, lower.tail = F)
+      if (pairwisecompare) {
+        if (logtransform) {
+          p2 = -log10(p2)
+          p1 = -log10(p1)
+          xlbl = expression(-log[10](italic(p2)))
+          ylbl = expression(-log[10](italic(p1)))
+        }
+        else {
+          xlbl = expression(italic(p2))
+          ylbl = expression(italic(p1))
+        }
+      }
+      else {
+        if (logtransform) {
+          p2 = -log10(sort(p2))
+          p1 = -log10(sort(p1))
+          xlbl = expression(-log[10](italic(p2)))
+          ylbl = expression(-log[10](italic(p1)))
+        }
+        else {
+          p2 = sort(p2)
+          p1 = sort(p1)
+          xlbl = expression(italic(p2))
+          ylbl = expression(italic(p1))
+        }
+      }
+    }
+  }
+  else {
+    if (logtransform) {
+      p2 = -log10(ppoints(length(p1)))
+      p1 = -log10(sort(p1))
+      xlbl = expression(Expected ~ ~-log[10](italic(p1)))
+      ylbl = expression(Observed ~ ~-log[10](italic(p1)))
+    }
+    else {
+      p2 = ppoints(length(p1))
+      p1 = sort(p1)
+      xlbl = expression(Expected ~ ~italic(p1))
+      ylbl = expression(Observed ~ ~italic(p1))
+    }
+  }
+  if (!is.null(maxP)) {
+    f = p1 <= -maxP
+    p1[f] = -maxP
+    f = p1 >= maxP
+    p1[f] = maxP
+    f = p2 <= -maxP
+    p2[f] = -maxP
+    f = p2 >= maxP
+    p2[f] = maxP
+  }
+  else {
+    f = p1 == Inf
+    p1[f] = sort(p1)[length(p1) - 1]
+    f = p1 == -Inf
+    p1[f] = sort(p1)[2]
+    f = p2 == Inf
+    p2[f] = sort(p2)[length(p2) - 1]
+    f = p2 == -Inf
+    p2[f] = sort(p2)[2]
+  }
+  if (length(colour) > 1) {
+    if (length(colour) != length(p1)) {
+      stop("p-value and colour must have same length.")
+    }
+    else {
+      m = data.frame(p1, p2, colour)
+    }
+    if (speedup) {
+      digs = 3
+      m$p1 = round(m$p1, digits = digs)
+      m$p2 = round(m$p2, digits = digs)
+      f = duplicated(m)
+      m = m[!f, ]
+    }
+    rm(p1, p2, colour)
+    if (!missing(xlab)) {
+      xlbl = xlab
+    }
+    if (!missing(ylab)) {
+      ylbl = ylab
+    }
+    fac1 = 1.2
+    fac2 = 0.4
+    xbnd = c(0, max(m$p2) + fac2)
+    ybnd = c(0, max(m$p1) + fac1)
+    plot(m$p2, m$p1, col = m$colour, pch = 20, cex = cex, 
+         cex.axis = cex.axis, las = 1, xaxs = "i", yaxs = "i", 
+         xlim = xbnd, ylim = ybnd, xlab = xlbl, ylab = ylbl, 
+         ...)
+    abline(0, 1, col = "red")
+    if (lambda) {
+      text(x = max(m$p2) * 0.05, y = max(m$p1), labels = bquote(lambda == 
+                                                                  .(round(lmb, digits = 4))), adj = c(0, 1))
+    }
+    return(lmb)
+  }
+  else {
+    m = as.data.frame(cbind(p1, p2))
+    if (speedup) {
+      digs = 3
+      m$p1 = round(m$p1, digits = digs)
+      m$p2 = round(m$p2, digits = digs)
+      f = duplicated(m)
+      m = m[!f, ]
+    }
+    rm(p1, p2)
+    if (!missing(xlab)) {
+      xlbl = xlab
+    }
+    if (!missing(ylab)) {
+      ylbl = ylab
+    }
+    fac1 = 1
+    fac2 = 0.4
+    xbnd = c(0, max(m$p2) + fac2)
+    ybnd = c(0, max(m$p1) + fac1)
+    plot(m$p2, m$p1, col = colour, pch = 20, cex = cex, cex.axis = cex.axis, 
+         las = 1, xaxs = "i", yaxs = "i", xlim = xbnd, ylim = ybnd, 
+         xlab = xlbl, ylab = ylbl, ...)
+    abline(0, 1, col = "red")
+    if (lambda) {
+      text(x = max(m$p2) * 0.05, y = max(m$p1), labels = bquote(lambda == 
+                                                                  .(round(lmb, digits = 4))), adj = c(0, 1))
+    }
+    return(lmb)
+  }
+}
 
+# the following function is used to generate QQ-Plots and label gene points 
 create_qq <- function(df, x_num){
-  fastqq (df$fet.p_value,
-          main=sprintf("QQ-Plot \n %s \n", head(hist_aCHD_LOF$Situation,n=1)),
+  df <-subset(df, fet.p_value >= 0.0000000000000000000000000000000000000000000000000001 & fet.p_value <= 0.9999999999) # remove 1 and zeros from the df 
+  hist_vec<-histone_panel$Gene # create vector for hist panel 
+  df<-df %>%        # check if gene is in hist panel 
+    mutate(Hist_Panel= 
+             case_when(
+               SYMBOL %in% hist_vec ~"green",
+               .default =  "black"
+             ))
+  df<- merge(x=df, y=histone_panel, by.x = "SYMBOL", by.y = "Gene",all=TRUE)
+  df<-subset(df, !is.na(csq_group))
+  
+  df$counts[is.na(df$counts)] <- 0
+  df<-df %>% 
+    mutate(farbe= 
+             case_when(
+               counts <=1 ~"salmon",
+               counts >=2 ~"black"
+             ))
+  
+  #calculate observed pvalue / to get the xy coordinates   
+  df$obs.p<- -log10(df$fet.p_value)
+  #calculate expected p-value
+  df$exp.p<- -log10((rank(df$fet.p_value, ties.method="first")-.5)/(length(df$fet.p_value)-1))
+  #add the gene Symbol via coordinates but only for teh first x rows / defined in head()
+  df <- df %>% arrange(df$fet.p_value)
+  
+  fastqqx (df$fet.p_value,
+          main=sprintf("QQ-Plot \n %s \n", head(df$Situation,n=1)),
           sub=head(df$Situation,n=1),
           p2=NULL,
           logtransform=TRUE,
           speedup=TRUE,
           lambda=TRUE,
+          fix_zero = TRUE, # exclude the 0 from the Data to make the lamda better 
           maxP=NULL, # truncation of p values visible if nedd be 
           cex=1,   # punkt größe
+          col=df$farbe,
           cex.axis=1# achsen beschriftungs größe
   )
-  #calculate observed pvalue / to get the xy coordinates   
-  df$obs.p<- -log10(df$fet.p_value)
-  #calculate expected p-value
-  df$exp.p<- -log10((rank(df$fet.p_value, ties.method="first")-.5)/(length(df$fet.p_value)-1))
-  #add the gene Symbol via coordinates but only for teh first two / defined in head()
-  text(head(df$exp.p,n=x_num),head(df$obs.p,n=x_num),labels=head(df$SYMBOL,n=x_num), cex= 0.7, pos=3)
-}
+  
+  text(head(df$exp.p,n=x_num),head(df$obs.p,n=x_num),labels=head(df$SYMBOL,n=x_num), cex= 0.7, pos=3,col=df$Hist_Panel)
+  }
 
-#test run 
-create_qq(hist_aCHD_syn,4)
-#it works perfectly 
 
+#Create all QQ Plots for vizualising 
+
+png(filename="figures/QQ_PLOT_aCHD_syn.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(aCHD_syn,4)
+dev.off()
+png(filename="figures/QQ_PLOT_aCHD_LOF.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(aCHD_LOF,4)
+dev.off()
+png(filename="figures/QQ_PLOT_aCHD_missC.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(aCHD_missC,4)
+dev.off()
+
+png(filename="figures/QQ_PLOT_sCHD_syn.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(sCHD_syn,4)
+dev.off()
+
+png(filename="figures/QQ_PLOT_sCHD_LOF.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(sCHD_LOF,4)###
+dev.off()
+
+png(filename="figures/QQ_PLOT_sCHD_missC.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(sCHD_missC,4)
+dev.off()
+
+
+png(filename="figures/QQ_PLOT_nsCHD_syn.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(nsCHD_syn,4)
+dev.off()
+
+png(filename="figures/QQ_PLOT_nsCHD_LOF.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(nsCHD_LOF,4)
+dev.off()
+
+png(filename="figures/QQ_PLOT_nsCHD_missC.png",width =9 ,height = 5,units="in",res = 300)
+create_qq(nsCHD_missC,4)
+dev.off()
 ############
 
 
@@ -369,101 +617,5 @@ create_qq(hist_aCHD_syn,4)
 
 
 
-x<- -log10(hist_aCHD_syn$fet.p_value) # das ist die y achse 
-y<- -log10(exp.pvalues) # das ist die x achse 
-y
-#Calculate expectations
-exp.pvalues<-(rank(hist_aCHD_syn$fet.p_value, ties.method="first")+.5)/(length(hist_aCHD_syn$fet.p_value)+1)
-x
-qqPlot(hist_aCHD_syn$fet.p_value)
-2.6937269489 #y
-2.75202673 #x
-text(2.6937269489,2.75202673,labels="X", cex= 0.7, pos=3)
-text(2.4718781993,2.71444269,labels="Y", cex= 0.7, pos=3)
-text(2.3257501636,2.47108330,labels="Z", cex= 0.7, pos=3)
-
-hist_aCHD_syn$exp<- -log10(hist_aCHD_syn$fet.p_value)
-
- #x2
- #y2
-qqplot()
-plot(y,x,aps=1,ylim = c(0,3))
-abline(0,1)
-# generating a qq plot with ggplot2
-ggplot(hist_aCHD_syn, aes(sample = -log(fet.p_value))) +
-  geom_qq() +
-  geom_qq_line()
 
 
-ggqqplot(hist_aCHD_syn$fet.p_value,color="black",add=c("qqline","none"),)
-
-qqnorm(hist_aCHD_syn$fet.p_value)
-
-fastqq (hist_aCHD_LOF$fet.p_value,
-        p2=NULL,
-        logtransform=TRUE,
-        pairwisecompare=TRUE,
-        speedup=TRUE,
-        lambda=TRUE,
-        maxP=14,
-        cex=1,   # 
-        cex.axis=2) # achsen beschriftungs größe 
-
-fastqq (hist_aCHD_syn$fet.p_value,
-        p2=NULL,
-        logtransform=TRUE,
-        speedup=TRUE,
-        lambda=TRUE,
-        maxP=NULL, # truncation of p values visible if nedd be 
-        cex=1,   # punkt größe
-        cex.axis=1# achsen beschriftungs größe
-        )  
-
-
-
-
-
-
-text(2,2,labels="here", cex= 0.7, pos=3)
-inst
-
-
-library("qqman")
-# visualize reults for Hist_aCHD
-qq(Hist_aCHD_LOF$fet.p_value, 
-   label=Hist_aCHD_LOF$SYMBOL,
-   main = "Q-Q Plot Hist_aCHD (qqman)",
-   pch = 19,
-   col = "black",
-   cex = 1, las = 1,
-   cex.axis=1.7,
-   xlim=c(0, 3.5),
-   ylim=c(0, 5.5)) 
-
-
-sCHD_syn
-
-
-gg<-qq(hist_aCHD_LOF$fet.p_value, 
-   main = "Q-Q Plot sCHD_syn (qqman)",
-   pch = 19,
-   col = "black",
-   cex = 1, las = 1,
-   cex.axis=1.7) 
-
-
-
-Top_Hits = head(arrange(sCHD_syn,fet.p_value),5) 
-
-# Add column label, containing the gene name for the top hits or nothing for all others
-sCHD_syn$label = if_else(sCHD_syn$SYMBOL %in% Top_Hits$SYMBOL,  
-                         sCHD_syn$SYMBOL, NULL)
-
-ggrepel::geom_text_repel(aes(label = label),
-                         size = 3, show.legend = FALSE) 
-
-
-
-
-install.packages("devtools")
-devtools::install_github('kaustubhad/fastman',build_vignettes = TRUE)
